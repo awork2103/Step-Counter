@@ -72,7 +72,13 @@ def read_ground_truth(filepath):
     for _, row in df.iterrows():
         filename = str(row["filename"])
         step_count = int(row["step_count"])
-        ground_truth[filename] = step_count
+        location = row["location"] if "location" in row and pd.notna(row["location"]) else None
+        if location is not None:
+            location = str(location).strip()
+        ground_truth[filename] = {
+            "step_count": step_count,
+            "location": location,
+        }
 
     return ground_truth
 
@@ -92,7 +98,7 @@ def lookup_ground_truth(ground_truth, csv_file):
 
     for candidate in candidates:
         if candidate in ground_truth:
-            return int(ground_truth[candidate])
+            return ground_truth[candidate]
 
     return None
 
@@ -142,14 +148,16 @@ def run_offline_batch(ground_truth_csv="data/ground_truth.csv", prefix="data/dat
 
             print(f"==== Step Counter Result {file_counter} ====")
             print(f"Step count: {result['step_count']}")
-            print(f"Ground truth: {gt if gt is not None else 'N/A'}")
+            if gt is not None and gt.get("location"):
+                print(f"Location: {gt['location']}")
+            print(f"Ground truth: {gt['step_count'] if gt is not None else 'N/A'}")
             if gt is not None:
                 sample_metrics = metrics_calculator.calculate_sample_metrics(
                     result["step_count"],
-                    gt,
+                    gt["step_count"],
                 )
                 predicted_steps.append(result["step_count"])
-                ground_truth_steps.append(gt)
+                ground_truth_steps.append(gt["step_count"])
                 print_sample_error_metrics(sample_metrics)
             print("=============================\n")
         except FileNotFoundError:
@@ -169,20 +177,27 @@ def run_offline_single(csv_file, ground_truth_step_count=None, ground_truth_csv=
     result = step_counter.run_offline(data)
     metrics_calculator = StepCounterErrorMetrics()
 
-    gt = ground_truth_step_count
-    if gt is None and ground_truth_csv is not None:
+    gt_record = None
+    if ground_truth_step_count is None and ground_truth_csv is not None:
         ground_truth = read_ground_truth(ground_truth_csv)
-        gt = lookup_ground_truth(ground_truth, csv_file)
+        gt_record = lookup_ground_truth(ground_truth, csv_file)
+    elif ground_truth_step_count is not None:
+        gt_record = {
+            "step_count": int(ground_truth_step_count),
+            "location": None,
+        }
 
     print("==== Step Counter Result ====")
     print(f"Step count: {result['step_count']}")
     print(f"Detected steps: {len(result['step_timestamps'])}")
     print("First 10 timestamps:", result["step_timestamps"][:10])
-    if gt is not None:
-        print(f"Ground truth: {gt}")
+    if gt_record is not None and gt_record.get("location"):
+        print(f"Location: {gt_record['location']}")
+    if gt_record is not None:
+        print(f"Ground truth: {gt_record['step_count']}")
         sample_metrics = metrics_calculator.calculate_sample_metrics(
             result["step_count"],
-            gt,
+            gt_record["step_count"],
         )
         print_sample_error_metrics(sample_metrics)
     print("=============================\n")

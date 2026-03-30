@@ -65,6 +65,7 @@ Note: if you run `python run_step_counter.py` with no subcommand, the script def
 ### Offline error metrics
 
 Offline evaluation now reports error metrics when ground-truth step counts are available.
+If the ground-truth CSV also contains a `location` column, the location is printed for each evaluated test case.
 
 Per-file metrics:
 

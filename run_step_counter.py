@@ -1,6 +1,9 @@
 import argparse
+from pathlib import Path
+
 import pandas as pd
 from step_counter import StepCounter
+from step_counter_metrics import StepCounterErrorMetrics
 
 DEFAULT_BASE_URL = "http://172.20.10.1"
 
@@ -74,9 +77,56 @@ def read_ground_truth(filepath):
     return ground_truth
 
 
+def lookup_ground_truth(ground_truth, csv_file):
+    path = Path(csv_file)
+    candidates = [
+        str(csv_file),
+        str(csv_file).replace("\\", "/"),
+        path.name,
+        path.stem,
+    ]
+
+    trailing_digits = "".join(ch for ch in path.stem if ch.isdigit())
+    if trailing_digits:
+        candidates.append(str(int(trailing_digits)))
+
+    for candidate in candidates:
+        if candidate in ground_truth:
+            return int(ground_truth[candidate])
+
+    return None
+
+
+def print_sample_error_metrics(metrics):
+    print(f"Signed error (pred - gt): {metrics['signed_error']}")
+    print(f"Absolute error: {metrics['absolute_error']}")
+    if metrics["percentage_error"] is None:
+        print("Percentage error: N/A (ground truth is 0)")
+        print("Absolute percentage error: N/A (ground truth is 0)")
+    else:
+        print(f"Percentage error: {metrics['percentage_error']:.2f}%")
+        print(f"Absolute percentage error: {metrics['absolute_percentage_error']:.2f}%")
+
+
+def print_summary_error_metrics(summary):
+    print("==== Error Summary ====")
+    print(f"Files evaluated: {summary['num_samples']}")
+    print(f"Mean error (bias): {summary['mean_error']:.2f}")
+    print(f"Mean absolute error (MAE): {summary['mean_absolute_error']:.2f}")
+    print(f"Root mean squared error (RMSE): {summary['root_mean_squared_error']:.2f}")
+    if summary["mape"] is None:
+        print("Mean absolute percentage error (MAPE): N/A")
+    else:
+        print(f"Mean absolute percentage error (MAPE): {summary['mape']:.2f}%")
+    print("=======================\n")
+
+
 def run_offline_batch(ground_truth_csv="data/ground_truth.csv", prefix="data/data", suffix=".csv"):
     file_counter = 0
     ground_truth = read_ground_truth(ground_truth_csv)
+    metrics_calculator = StepCounterErrorMetrics()
+    predicted_steps = []
+    ground_truth_steps = []
 
     for i in range(1, 100):
         file_counter += 1
@@ -88,24 +138,53 @@ def run_offline_batch(ground_truth_csv="data/ground_truth.csv", prefix="data/dat
             step_counter = StepCounter()
             result = step_counter.run_offline(data)
 
-            gt = ground_truth.get(csv_file, ground_truth.get(str(file_counter), "N/A"))
+            gt = lookup_ground_truth(ground_truth, csv_file)
 
             print(f"==== Step Counter Result {file_counter} ====")
-            print(f"Step count: {result['step_count']}, Ground truth: {gt}")
+            print(f"Step count: {result['step_count']}")
+            print(f"Ground truth: {gt if gt is not None else 'N/A'}")
+            if gt is not None:
+                sample_metrics = metrics_calculator.calculate_sample_metrics(
+                    result["step_count"],
+                    gt,
+                )
+                predicted_steps.append(result["step_count"])
+                ground_truth_steps.append(gt)
+                print_sample_error_metrics(sample_metrics)
             print("=============================\n")
-        except Exception:
+        except FileNotFoundError:
             break
 
+    if predicted_steps:
+        summary = metrics_calculator.calculate_summary_metrics(
+            predicted_steps,
+            ground_truth_steps,
+        )
+        print_summary_error_metrics(summary)
 
-def run_offline_single(csv_file):
+
+def run_offline_single(csv_file, ground_truth_step_count=None, ground_truth_csv=None):
     data = load_csv(csv_file)
     step_counter = StepCounter()
     result = step_counter.run_offline(data)
+    metrics_calculator = StepCounterErrorMetrics()
+
+    gt = ground_truth_step_count
+    if gt is None and ground_truth_csv is not None:
+        ground_truth = read_ground_truth(ground_truth_csv)
+        gt = lookup_ground_truth(ground_truth, csv_file)
 
     print("==== Step Counter Result ====")
     print(f"Step count: {result['step_count']}")
     print(f"Detected steps: {len(result['step_timestamps'])}")
     print("First 10 timestamps:", result["step_timestamps"][:10])
+    if gt is not None:
+        print(f"Ground truth: {gt}")
+        sample_metrics = metrics_calculator.calculate_sample_metrics(
+            result["step_count"],
+            gt,
+        )
+        print_sample_error_metrics(sample_metrics)
     print("=============================\n")
 
 
@@ -154,6 +233,8 @@ def build_arg_parser():
         help="Run offline step counting for one CSV file."
     )
     offline_one.add_argument("--csv", required=True)
+    offline_one.add_argument("--ground-truth", type=int, default=None)
+    offline_one.add_argument("--ground-truth-csv", default=None)
 
     online = subparsers.add_parser(
         "online",
@@ -193,7 +274,11 @@ def main():
         )
 
     elif args.mode == "offline":
-        run_offline_single(args.csv)
+        run_offline_single(
+            args.csv,
+            ground_truth_step_count=args.ground_truth,
+            ground_truth_csv=args.ground_truth_csv,
+        )
 
     elif args.mode == "online":
         import requests

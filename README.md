@@ -36,6 +36,18 @@ Run one CSV file:
 python run_step_counter.py offline --csv data/data1.csv
 ```
 
+Run one CSV file and compare it against a known ground-truth step count:
+
+```powershell
+python run_step_counter.py offline --csv data/data1.csv --ground-truth 105
+```
+
+Run one CSV file and look up the ground-truth value from a CSV file:
+
+```powershell
+python run_step_counter.py offline --csv data/data1.csv --ground-truth-csv data/ground_truth.csv
+```
+
 Run the batch evaluation over `data/data1.csv`, `data/data2.csv`, and so on:
 
 ```powershell
@@ -49,6 +61,37 @@ python run_step_counter.py offline-batch --ground-truth data/ground_truth.csv --
 ```
 
 Note: if you run `python run_step_counter.py` with no subcommand, the script defaults to `offline-batch`.
+
+### Offline error metrics
+
+Offline evaluation now reports error metrics when ground-truth step counts are available.
+
+Per-file metrics:
+
+- `signed_error = predicted_steps - ground_truth_steps`
+- `absolute_error = |predicted_steps - ground_truth_steps|`
+- `percentage_error = 100 * signed_error / ground_truth_steps`
+- `absolute_percentage_error = 100 * absolute_error / ground_truth_steps`
+
+If the ground-truth value is `0`, the percentage-based metrics are shown as `N/A`.
+
+Batch summary metrics:
+
+- `mean_error (bias)`: average of all signed errors
+- `mean_absolute_error (MAE)`: average of all absolute errors
+- `root_mean_squared_error (RMSE)`: square root of the average squared error
+- `mean_absolute_percentage_error (MAPE)`: average of all absolute percentage errors for files with non-zero ground truth
+
+In formula form, for `N` evaluated files:
+
+```text
+ME   = (1/N) * sum(predicted_i - ground_truth_i)
+MAE  = (1/N) * sum(|predicted_i - ground_truth_i|)
+RMSE = sqrt((1/N) * sum((predicted_i - ground_truth_i)^2))
+MAPE = (1/N_nonzero) * sum(100 * |predicted_i - ground_truth_i| / ground_truth_i)
+```
+
+The implementation for these calculations is in `step_counter_metrics.py`.
 
 ### Online mode
 

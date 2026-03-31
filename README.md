@@ -20,6 +20,18 @@ Install Python 3, then install the packages used by the project:
 pip install numpy pandas matplotlib requests
 ```
 
+## Datasets
+
+Datasets are located in the `/data` folder. Here are the details for all the datasets:
+| Dataset | Duration (s) | Location                                              | Steps |
+|----|-------------|--------------------------------------------------------|-------|
+| 1  | 60          | HKU Underground Station (Exit C tunnel)               | 105   |
+| 2  | 30          | HKU Underground Station (Exit C tunnel)               | 54    |
+| 3  | 60          | HKU Main Building Corridor (outside MB167)            | 101   |
+| 4  | 30          | HKU Main Building Corridor (outside MB167)            | 40    |
+| 5  | 60          | Inside student dormitory                              | 72    |
+| 6  | 30          | Inside student dormitory                              | 42    |
+
 ## How To Run
 
 Run commands from the project root:
@@ -29,6 +41,12 @@ cd c:\Users\User\Documents\GitHub\Step-Counter
 ```
 
 ### Offline mode
+
+Run all CSV files:
+
+```powershell
+python run_step_counter.py
+```
 
 Run one CSV file:
 

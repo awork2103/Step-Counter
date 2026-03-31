@@ -27,10 +27,10 @@ Datasets are located in the `/data` folder. Here are the details for all the dat
 |----|-------------|--------------------------------------------------------|-------|
 | 1  | 60          | HKU Underground Station (Exit C tunnel)               | 105   |
 | 2  | 30          | HKU Underground Station (Exit C tunnel)               | 54    |
-| 3  | 60          | HKU Main Building Corridor (outside MB167)            | 101   |
-| 4  | 30          | HKU Main Building Corridor (outside MB167)            | 40    |
-| 5  | 60          | Inside student dormitory                              | 72    |
-| 6  | 30          | Inside student dormitory                              | 42    |
+| 3  | 60          | HKU Main Building corridor outside MB167 (walking up and down)            | 101   |
+| 4  | 30          | HKU Main Building corridor outside MB167 (walking up and down)            | 40    |
+| 5  | 60          | Inside HKU student flats dormitory                              | 72    |
+| 6  | 30          | Inside HKU student flats dormitory                              | 42    |
 
 ## How To Run
 
